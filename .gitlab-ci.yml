@@ -1,0 +1,72 @@
+image: docker:latest
+services:
+  - docker:dind
+variables:
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  CONTAINER_TEST_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
+before_script:
+  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+stages:
+  - build
+  - test
+  - release
+  - deploy
+build_app:
+  stage: build
+  script:
+    - echo "Building the Docker image..."
+    - docker build -t $CONTAINER_TEST_IMAGE .
+    - docker push $CONTAINER_TEST_IMAGE
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_TAG
+run_tests:
+  stage: test
+  image: python:3.9-slim
+  before_script:
+    - pip install -r app/requirements.txt
+  script:
+    - echo "Running Python unit tests..."
+    - python app/tests/test_main.py
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_TAG
+release_image:
+  stage: release
+  script:
+    - echo "Tagging and pushing latest image..."
+    - docker pull $CONTAINER_TEST_IMAGE
+    - docker tag $CONTAINER_TEST_IMAGE $CONTAINER_RELEASE_IMAGE
+    - docker push $CONTAINER_RELEASE_IMAGE
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+deploy_staging:
+  stage: deploy
+  script:
+    - echo "Deploying application to staging..."
+    - docker pull $CONTAINER_TEST_IMAGE
+    - docker stop running_app || true
+    - docker rm running_app || true
+    - docker run -d -p 5000:5000 --name running_app $CONTAINER_TEST_IMAGE
+    - echo "Application deployed to http://<your-runner-ip>:5000"
+  environment:
+    name: staging
+    url: http://<>:5000
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+deploy_production:
+  stage: deploy
+  script:
+    - echo "Deploying application to production..."
+    - docker pull $CONTAINER_RELEASE_IMAGE
+    - echo "Production deployment simulated."
+  environment:
+    name: production
+  rules:
+    - if: $CI_COMMIT_TAG
+  when: manual
