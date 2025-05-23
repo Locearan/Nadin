@@ -1,6 +1,6 @@
 ## Alters
 <p align="center"><img src='/images/Screenshot%202025-05-23%20201629.png' alt='Golang Web API System Design Diagram' /></p>
-## Query
+# Query
 <p align="center"><img src='/images/Screenshot%202025-05-23%20201848.png' alt='Golang Web API System Design Diagram' /></p>
 ## Health
 <p align="center"><img src='/images/Screenshot%202025-05-23%20202132.png' alt='Golang Web API System Design Diagram' /></p>
